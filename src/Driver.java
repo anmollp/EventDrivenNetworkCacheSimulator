@@ -120,7 +120,7 @@ public class Driver {
                 currentTime = e.key;
                 switch(e.func) {
                     case REQUEST_ARRIVAL_EVENT:
-                        requestArrivalTime(e);
+                        requestArrivalEvent(e);
                         break;
                     case END_OF_TRANSMISSION_EVENT:
                         endOfTransmissionEvent(e);
@@ -133,7 +133,7 @@ public class Driver {
         }
     }
 
-    public static void requestArrivalTime(Event ev) {
+    public static void requestArrivalEvent(Event ev) {
         Packet p = ev.getPacket();
         p.setRequestTime(currentTime);
 
