@@ -6,7 +6,6 @@ import java.util.Queue;
 public class FIFOQueue {
 
     private static FIFOQueue instance;
-    public double workLoad = 0;
     Queue<Packet> fifoQueue;
 
     private FIFOQueue() {
@@ -26,7 +25,6 @@ public class FIFOQueue {
 
     public void enqueue(Packet p) {
         fifoQueue.add(p);
-        workLoad += p.getWorkLoad();
     }
 
     public Packet getHead() {
@@ -37,7 +35,6 @@ public class FIFOQueue {
         try {
             if (Objects.equals(fifoQueue.peek(), p)) {
                 fifoQueue.remove();
-                workLoad -= p.workLoad;
             }
             else {
                 throw new Exception("Requested packet cannot be dequeued as it is not the head.");

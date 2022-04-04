@@ -1,7 +1,9 @@
 enum EventType {
-    REQUEST_ARRIVAL_EVENT(1),
-    END_OF_SERVICE_EVENT(2),
-    END_OF_TRANSMISSION_EVENT(3);
+    FILE_RECEIVED_EVENT(1),
+    NEW_REQUEST_EVENT(2),
+    ARRIVE_AT_QUEUE_EVENT(3),
+    DEPART_QUEUE_EVENT(4);
+
 
     private final int value;
     EventType(int value) {

@@ -11,6 +11,14 @@ public class InputReader {
     //with transmission rate normalized to 1
     Distribution workLoadDistribution;
     double paretoAlpha; // pareto parameter alpha, must be > 1
+    String cacheType;
+    double institutionBandwidth;
+    double logNormalMean;
+    double logNormalStd;
+    int numFiles;
+    double fifoBandWidth;
+    double cacheSize;
+    double meanFileSize;
 
     public InputReader(String filename) {
             File fileObj = new File(filename);
@@ -50,6 +58,30 @@ public class InputReader {
                     case "Pareto Alpha":
                         this.paretoAlpha = Double.parseDouble(data[1].trim());
                         break;
+                    case "Cache Type":
+                        this.cacheType = data[1].trim();
+                        break;
+                    case "Institution Bandwidth":
+                        this.institutionBandwidth = Double.parseDouble(data[1].trim());
+                        break;
+                    case "Log Normal Mean(ms)":
+                        this.logNormalMean = Double.parseDouble(data[1].trim());
+                        break;
+                    case "Log Normal Standard Deviation(ms)":
+                        this.logNormalStd = Double.parseDouble(data[1].trim());
+                        break;
+                    case "Number of files":
+                        this.numFiles = Integer.parseInt(data[1].trim());
+                        break;
+                    case "FIFO Bandwidth":
+                        this.fifoBandWidth = Double.parseDouble(data[1].trim());
+                        break;
+                    case "Cache Size":
+                        this.cacheSize = Double.parseDouble(data[1].trim());
+                        break;
+                    case "Mean File Size":
+                        this.meanFileSize = Double.parseDouble(data[1].trim());
+                        break;
                 }
             }
         }
@@ -85,5 +117,35 @@ public class InputReader {
 
     public double getRequestRate() {
         return requestRate;
+    }
+
+    public String getCacheType() {
+        return cacheType;
+    }
+
+    public double getInstitutionBandwidth() {
+        return institutionBandwidth;
+    }
+
+    public double getLogNormalMean() {
+        return logNormalMean;
+    }
+
+    public double getLogNormalStd() {
+        return logNormalStd;
+    }
+
+    public int getNumberOfFiles() {
+        return numFiles;
+    }
+
+    public double getFifoBandWidth() { return fifoBandWidth ; }
+
+    public double getCacheSize() {
+        return cacheSize;
+    }
+
+    public double getMeanFileSize() {
+        return meanFileSize;
     }
 }

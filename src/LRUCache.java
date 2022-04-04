@@ -1,4 +1,4 @@
-import java.io.File;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -27,13 +27,13 @@ class Node {
     }
 }
 
-public class LRUCache {
-    private int capacity;
+public class LRUCache implements Cache{
+    private final double capacity;
     private Map<Integer, Node> cache;
-    private Node left;
-    private Node right;
+    private final Node left;
+    private final Node right;
 
-    public LRUCache(int capacity) {
+    public LRUCache(double capacity) {
         this.capacity = capacity;
         this.cache = new HashMap<>();
         this.left = new Node(0, new FileMetadata(0, 0));
@@ -67,6 +67,14 @@ public class LRUCache {
         return new Node(-1, new FileMetadata(-1, -1));
     }
 
+    public double getCurrentCacheSize() {
+        double curCacheSize = 0;
+        for(Node n: this.cache.values()) {
+            curCacheSize += n.getFileSize();
+        }
+        return curCacheSize;
+    }
+
     public void put(int fileId, FileMetadata fm) {
         if(this.cache.containsKey(fileId)) {
             remove(this.cache.get(fileId));
@@ -75,7 +83,7 @@ public class LRUCache {
         insert(this.cache.get(fileId));
 
         // if exceeds capacity remove least recently used and delete from cache
-        if (this.cache.size() > this.capacity) {
+        while (getCurrentCacheSize() > this.capacity) {
             Node leastRecentlyUsed = this.left.next;
             remove(leastRecentlyUsed);
             this.cache.remove(leastRecentlyUsed.getFileId());

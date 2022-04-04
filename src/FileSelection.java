@@ -11,21 +11,21 @@ public class FileSelection {
     private double meanFileSize;//in MBs
     private double fileSizeDistScale;
     private double filePopularityAlpha;
-    private double filePopularityShape;
+    private double filePopularityScale;
     private ParetoDistribution fileSizeDistribution;
     private ParetoDistribution filePopularityDistribution;
     private Map<Integer, FileMetadata> fileMap;
 
     public FileSelection(int numberOfFiles, double fileSizeDistShape, double meanFileSize, double filePopularityAlpha,
-                         double filePopularityShape, RandomGenerator rng) {
+                         double filePopularityScale, RandomGenerator rng) {
         this.numberOfFiles = numberOfFiles;
         this.fileSizeDistShape = fileSizeDistShape;
         this.meanFileSize = meanFileSize;
         this.filePopularityAlpha = filePopularityAlpha;
-        this.filePopularityShape = filePopularityShape;
+        this.filePopularityScale = filePopularityScale;
         this.fileSizeDistScale = (this.fileSizeDistShape - 1.0) / this.fileSizeDistShape * this.meanFileSize;
         this.fileSizeDistribution = new ParetoDistribution(rng, this.fileSizeDistScale, this.fileSizeDistShape);
-        this.filePopularityDistribution = new ParetoDistribution(rng, this.filePopularityShape, this.filePopularityAlpha);
+        this.filePopularityDistribution = new ParetoDistribution(rng, this.filePopularityScale, this.filePopularityAlpha);
     }
 
     public Map<Integer, FileMetadata> generateFiles() {
@@ -48,9 +48,6 @@ public class FileSelection {
         }
         return filePopularity;
     }
-
-
-
 
 }
 
