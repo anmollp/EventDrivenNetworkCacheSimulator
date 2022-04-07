@@ -6,10 +6,6 @@ public class InputReader {
     int totalRequests; // total number of requests to be simulated.
     int totalTime; // total amount of time the simulation needs to run for.
     double requestRate; // per second
-    double systemLoad; // For stability, system load should be in (0, 1)
-    double serverRate; // Each server rate is relative to the FIFO queue transmission rate,
-    //with transmission rate normalized to 1
-    Distribution workLoadDistribution;
     double paretoAlpha; // pareto parameter alpha, must be > 1
     String cacheType;
     double institutionBandwidth;
@@ -18,7 +14,7 @@ public class InputReader {
     int numFiles;
     double fifoBandWidth;
     double cacheSize;
-    double meanFileSize;
+    double paretoMean;
 
     public InputReader(String filename) {
             File fileObj = new File(filename);
@@ -40,21 +36,6 @@ public class InputReader {
                     case "Request Rate":
                         this.requestRate = Double.parseDouble(data[1].trim());
                         break;
-                    case "System Load":
-                        this.systemLoad = Double.parseDouble(data[1].trim());
-                        break;
-                    case "Server Rate":
-                        this.serverRate = Double.parseDouble(data[1].trim());
-                        break;
-                    case "Workload Distribution":
-                        int wld = Integer.parseInt(data[1].trim());
-                        if (wld == 1) {
-                            this.workLoadDistribution = Distribution.EXPONENTIAL;
-                        }
-                        else if(wld == 2) {
-                            this.workLoadDistribution = Distribution.PARETO;
-                        }
-                        break;
                     case "Pareto Alpha":
                         this.paretoAlpha = Double.parseDouble(data[1].trim());
                         break;
@@ -64,10 +45,10 @@ public class InputReader {
                     case "Institution Bandwidth":
                         this.institutionBandwidth = Double.parseDouble(data[1].trim());
                         break;
-                    case "Log Normal Mean(ms)":
+                    case "Log Normal Mean(s)":
                         this.logNormalMean = Double.parseDouble(data[1].trim());
                         break;
-                    case "Log Normal Standard Deviation(ms)":
+                    case "Log Normal Standard Deviation(s)":
                         this.logNormalStd = Double.parseDouble(data[1].trim());
                         break;
                     case "Number of files":
@@ -80,7 +61,7 @@ public class InputReader {
                         this.cacheSize = Double.parseDouble(data[1].trim());
                         break;
                     case "Mean File Size":
-                        this.meanFileSize = Double.parseDouble(data[1].trim());
+                        this.paretoMean = Double.parseDouble(data[1].trim());
                         break;
                 }
             }
@@ -89,14 +70,6 @@ public class InputReader {
             System.out.println("No such file");
             e.printStackTrace();
         }
-    }
-
-    public double getWorkLoadMean() {
-        return systemLoad / requestRate;
-    }
-
-    public Distribution getWorkLoadDistribution() {
-        return workLoadDistribution;
     }
 
     public double getParetoAlpha() {
@@ -109,10 +82,6 @@ public class InputReader {
 
     public int getTotalTime() {
         return totalTime;
-    }
-
-    public double getServerRate() {
-        return serverRate;
     }
 
     public double getRequestRate() {
@@ -145,7 +114,7 @@ public class InputReader {
         return cacheSize;
     }
 
-    public double getMeanFileSize() {
-        return meanFileSize;
+    public double getParetoMean() {
+        return paretoMean;
     }
 }
