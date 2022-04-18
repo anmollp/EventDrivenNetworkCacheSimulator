@@ -33,20 +33,4 @@ public class Event {
     public Packet getPacket() {
         return packet;
     }
-
-    public void setKey(double modifiedKey) {
-        key = modifiedKey;
-    }
-
-    public void setPacket(Packet p) {
-        packet = p;
-    }
-
-    public void setPacketId(int pId) {
-        packId = pId;
-    }
-
-    public void setFunc(EventType t) {
-        func = t;
-    }
 }

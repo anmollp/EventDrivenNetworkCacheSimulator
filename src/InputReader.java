@@ -42,7 +42,7 @@ public class InputReader {
                     case "Cache Type":
                         this.cacheType = data[1].trim();
                         break;
-                    case "Institution Bandwidth":
+                    case "Institution Bandwidth(Mbps)":
                         this.institutionBandwidth = Double.parseDouble(data[1].trim());
                         break;
                     case "Log Normal Mean(s)":
@@ -54,13 +54,13 @@ public class InputReader {
                     case "Number of files":
                         this.numFiles = Integer.parseInt(data[1].trim());
                         break;
-                    case "FIFO Bandwidth":
+                    case "FIFO Bandwidth(Mbps)":
                         this.fifoBandWidth = Double.parseDouble(data[1].trim());
                         break;
-                    case "Cache Size":
+                    case "Cache Size(MB)":
                         this.cacheSize = Double.parseDouble(data[1].trim());
                         break;
-                    case "Mean File Size":
+                    case "Pareto Mean(MB)":
                         this.paretoMean = Double.parseDouble(data[1].trim());
                         break;
                 }

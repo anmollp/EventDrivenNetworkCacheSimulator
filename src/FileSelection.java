@@ -32,9 +32,9 @@ public class FileSelection {
         fileMap = new HashMap<>();
         double[] randomFileSizes = this.fileSizeDistribution.sample(numberOfFiles);
         double[] popularityFactor = this.filePopularityDistribution.sample(numberOfFiles);
-        double[] filePopularity = calculatePopularityForEachFile(popularityFactor);
+        double[] filePopularityProbability = calculatePopularityForEachFile(popularityFactor);
         for(int i = 1; i <= randomFileSizes.length; i++) {
-            fileMap.put(i, new FileMetadata(randomFileSizes[i-1],filePopularity[i-1]));
+            fileMap.put(i, new FileMetadata(randomFileSizes[i-1], popularityFactor[i-1], filePopularityProbability[i-1]));
         }
 
         return fileMap;
@@ -42,11 +42,11 @@ public class FileSelection {
 
     private double[] calculatePopularityForEachFile(double[] filePopFact) {
         double totalPopularity = Arrays.stream(filePopFact).sum();
-        double[] filePopularity = new double[filePopFact.length];
-        for(int i = 0; i < filePopularity.length; i++ ) {
-            filePopularity[i] = filePopFact[i] / totalPopularity;
+        double[] filePopularityProbability = new double[filePopFact.length];
+        for(int i = 0; i < filePopularityProbability.length; i++ ) {
+            filePopularityProbability[i] = filePopFact[i] / totalPopularity;
         }
-        return filePopularity;
+        return filePopularityProbability;
     }
 
 }

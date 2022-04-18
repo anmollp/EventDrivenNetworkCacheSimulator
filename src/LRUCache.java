@@ -1,31 +1,6 @@
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-
-class Node {
-    public int fileId;
-    public FileMetadata fm;
-    public Node prev;
-    public Node next;
-    public Node(int fileId, FileMetadata fm) {
-        this.fileId = fileId;
-        this.fm = fm;
-        this.prev = null;
-        this.next = null;
-    }
-
-    public int getFileId() {
-        return fileId;
-    }
-
-    public double getFileSize() {
-        return fm.getSize();
-    }
-
-    public double getFilePopularity() {
-        return fm.getPopularity();
-    }
-}
 
 public class LRUCache implements Cache{
     private final double capacity;
@@ -36,8 +11,8 @@ public class LRUCache implements Cache{
     public LRUCache(double capacity) {
         this.capacity = capacity;
         this.cache = new HashMap<>();
-        this.left = new Node(0, new FileMetadata(0, 0));
-        this.right = new Node(0, new FileMetadata(0, 0));
+        this.left = new Node(0, new FileMetadata(0, 0, 0));
+        this.right = new Node(0, new FileMetadata(0, 0, 0));
         this.left.next = this.right;
         this.right.prev = this.left;
     }
@@ -64,7 +39,7 @@ public class LRUCache implements Cache{
             insert(this.cache.get(fileId));
             return this.cache.get(fileId);
         }
-        return new Node(-1, new FileMetadata(-1, -1));
+        return new Node(-1, new FileMetadata(-1, -1, 0));
     }
 
     public double getCurrentCacheSize() {
@@ -88,5 +63,13 @@ public class LRUCache implements Cache{
             remove(leastRecentlyUsed);
             this.cache.remove(leastRecentlyUsed.getFileId());
         }
+    }
+
+    public Object[] getCurrentCacheView() {
+        ArrayList<Double> size = new ArrayList<>();
+        for(Node n: cache.values()) {
+            size.add(n.getFilePopularity());
+        }
+        return size.toArray();
     }
 }

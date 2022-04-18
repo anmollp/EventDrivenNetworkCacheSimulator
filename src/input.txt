@@ -1,13 +1,12 @@
-Total Requests: 10000
-Total Time: 1
+Total Requests: 1000000
+Total Time: 3600
 Number of files: 1000
 Request Rate: 1000.0
-Pareto Mean(Bytes): 1000
+Pareto Mean(MB): 1
 Pareto Alpha: 2
 Log Normal Mean(s): 0.5
 Log Normal Standard Deviation(s): 0.4
-Cache Type: LRU
-Institution Bandwidth: 1000
-FIFO Bandwidth: 15000
-Cache Size: 100
-Mean File Size: 1000
+Cache Type: LP
+Institution Bandwidth(Mbps): 1000
+FIFO Bandwidth(Mbps): 15
+Cache Size(MB): 10
