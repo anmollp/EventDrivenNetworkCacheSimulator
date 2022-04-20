@@ -1,7 +1,9 @@
 enum EventType {
-    REQUEST_ARRIVAL_EVENT(1),
-    END_OF_SERVICE_EVENT(2),
-    END_OF_TRANSMISSION_EVENT(3);
+    FILE_RECEIVED_EVENT(1),
+    NEW_REQUEST_EVENT(2),
+    ARRIVE_AT_QUEUE_EVENT(3),
+    DEPART_QUEUE_EVENT(4);
+
 
     private final int value;
     EventType(int value) {
@@ -30,21 +32,5 @@ public class Event {
 
     public Packet getPacket() {
         return packet;
-    }
-
-    public void setKey(double modifiedKey) {
-        key = modifiedKey;
-    }
-
-    public void setPacket(Packet p) {
-        packet = p;
-    }
-
-    public void setPacketId(int pId) {
-        packId = pId;
-    }
-
-    public void setFunc(EventType t) {
-        func = t;
     }
 }

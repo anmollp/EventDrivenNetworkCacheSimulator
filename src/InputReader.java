@@ -6,11 +6,15 @@ public class InputReader {
     int totalRequests; // total number of requests to be simulated.
     int totalTime; // total amount of time the simulation needs to run for.
     double requestRate; // per second
-    double systemLoad; // For stability, system load should be in (0, 1)
-    double serverRate; // Each server rate is relative to the FIFO queue transmission rate,
-    //with transmission rate normalized to 1
-    Distribution workLoadDistribution;
     double paretoAlpha; // pareto parameter alpha, must be > 1
+    String cacheType;
+    double institutionBandwidth;
+    double logNormalMean;
+    double logNormalStd;
+    int numFiles;
+    double fifoBandWidth;
+    double cacheSize;
+    double paretoMean;
 
     public InputReader(String filename) {
             File fileObj = new File(filename);
@@ -32,23 +36,32 @@ public class InputReader {
                     case "Request Rate":
                         this.requestRate = Double.parseDouble(data[1].trim());
                         break;
-                    case "System Load":
-                        this.systemLoad = Double.parseDouble(data[1].trim());
-                        break;
-                    case "Server Rate":
-                        this.serverRate = Double.parseDouble(data[1].trim());
-                        break;
-                    case "Workload Distribution":
-                        int wld = Integer.parseInt(data[1].trim());
-                        if (wld == 1) {
-                            this.workLoadDistribution = Distribution.EXPONENTIAL;
-                        }
-                        else if(wld == 2) {
-                            this.workLoadDistribution = Distribution.PARETO;
-                        }
-                        break;
                     case "Pareto Alpha":
                         this.paretoAlpha = Double.parseDouble(data[1].trim());
+                        break;
+                    case "Cache Type":
+                        this.cacheType = data[1].trim();
+                        break;
+                    case "Institution Bandwidth(Mbps)":
+                        this.institutionBandwidth = Double.parseDouble(data[1].trim());
+                        break;
+                    case "Log Normal Mean(s)":
+                        this.logNormalMean = Double.parseDouble(data[1].trim());
+                        break;
+                    case "Log Normal Standard Deviation(s)":
+                        this.logNormalStd = Double.parseDouble(data[1].trim());
+                        break;
+                    case "Number of files":
+                        this.numFiles = Integer.parseInt(data[1].trim());
+                        break;
+                    case "FIFO Bandwidth(Mbps)":
+                        this.fifoBandWidth = Double.parseDouble(data[1].trim());
+                        break;
+                    case "Cache Size(MB)":
+                        this.cacheSize = Double.parseDouble(data[1].trim());
+                        break;
+                    case "Pareto Mean(MB)":
+                        this.paretoMean = Double.parseDouble(data[1].trim());
                         break;
                 }
             }
@@ -57,14 +70,6 @@ public class InputReader {
             System.out.println("No such file");
             e.printStackTrace();
         }
-    }
-
-    public double getWorkLoadMean() {
-        return systemLoad / requestRate;
-    }
-
-    public Distribution getWorkLoadDistribution() {
-        return workLoadDistribution;
     }
 
     public double getParetoAlpha() {
@@ -79,11 +84,37 @@ public class InputReader {
         return totalTime;
     }
 
-    public double getServerRate() {
-        return serverRate;
-    }
-
     public double getRequestRate() {
         return requestRate;
+    }
+
+    public String getCacheType() {
+        return cacheType;
+    }
+
+    public double getInstitutionBandwidth() {
+        return institutionBandwidth;
+    }
+
+    public double getLogNormalMean() {
+        return logNormalMean;
+    }
+
+    public double getLogNormalStd() {
+        return logNormalStd;
+    }
+
+    public int getNumberOfFiles() {
+        return numFiles;
+    }
+
+    public double getFifoBandWidth() { return fifoBandWidth ; }
+
+    public double getCacheSize() {
+        return cacheSize;
+    }
+
+    public double getParetoMean() {
+        return paretoMean;
     }
 }

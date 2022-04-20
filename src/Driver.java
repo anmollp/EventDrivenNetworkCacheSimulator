@@ -1,53 +1,66 @@
+import org.apache.commons.math3.distribution.EnumeratedIntegerDistribution;
+import org.apache.commons.math3.distribution.LogNormalDistribution;
+import org.apache.commons.math3.distribution.PoissonDistribution;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.distribution.ExponentialDistribution;
-import org.apache.commons.math3.distribution.ParetoDistribution;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
 
-import java.util.Arrays;
-import java.util.Random;
+import java.util.*;
 
-enum Distribution {
-    EXPONENTIAL(1),
-    PARETO(2);
-
-    private final int value;
-    Distribution(int value) {
-        this.value = value;
-    }
-
-    public int getValue() {
-        return value;
-    }
-}
+//enum Distribution {
+//    EXPONENTIAL(1),
+//    PARETO(2);
+//
+//    private final int value;
+//    Distribution(int value) {
+//        this.value = value;
+//    }
+//
+//    public int getValue() {
+//        return value;
+//    }
+//}
 
 public class Driver {
-    static long randomSeed = 0;   // random seed number
-    //gsl_rng        *RandGen;      // global random number generator
+    static long randomSeed = 1;   // random seed number
     static int numRequests;   // num. of requests seen so far
     static int numFinished;   // num. of requests finished so far
     static int numInService; // number of requests being serviced at the moment
     static int totalRequests;
     static int totalTime;
     static double currentTime = 0; // current time
-    static double serverRate;
     static double requestRate;
-    static double workLoadMean; // mean of the workload is calculated based on the RequestRate and SystemLoad
+    static double paretoMean;
     static double paretoAlpha;
-    // minimum of a Pareto random variable representing the workload size;
-    // it is computed based on the input parameter Pareto_Alpha and WorkloadMean
+    static String cacheType;
+    static double institutionBandwidth;
+    static double fifoBandWidth;
+    static double logNormalMean;
+    static double logNormalStd;
+    static int numFiles;
     static double pareto_K;
     static EventPriorityQueue eventPQ;
     static FIFOQueue packetQueue;
+    static Cache cache;
+    static double cacheSize;
+    static int oneByte = 8;
+    static double[] popularityProbabilities;
+    static double totalFileSize;
 
     // the following are used to compute the mean
     static CumulativeMeasurement inService = new CumulativeMeasurement(0.0, 0.0);  // cumulative number in service
     static CumulativeMeasurement queued = new CumulativeMeasurement(0.0, 0.0); // cumulative number in the queue
     static CumulativeMeasurement queueingDelay = new CumulativeMeasurement(0.0, 0.0); // cumulative queueing in the queue
     static CumulativeMeasurement responseTime = new CumulativeMeasurement(0.0, 0.0); // cumulative response time
+    static CumulativeMeasurement cacheHit = new CumulativeMeasurement(0.0, 0.0); // number of cache hits
+    static CumulativeMeasurement cacheMiss = new CumulativeMeasurement(0.0, 0.0); // number of cache misses
 
-    static Distribution workLoadDistribution;
     static Random rand = new Random(randomSeed);
     static RandomGenerator rng = RandomGeneratorFactory.createRandomGenerator(rand);
+    static LogNormalDistribution logNormalDist;
+    static ExponentialDistribution expDist;
+    static EnumeratedIntegerDistribution fileSelectDistribution;
+    static Map<Integer, FileMetadata> fileMap;
 
 
 
@@ -61,162 +74,198 @@ public class Driver {
         eventPQ = EventPriorityQueue.getInstance();               // event priority queue
         packetQueue = FIFOQueue.getInstance();              // FIFO packet queue
 
-
         InputReader inp = new InputReader(args[0]);
-        totalRequests = inp.getTotalRequests();
-        totalTime = inp.getTotalTime();
-        serverRate = inp.getServerRate();
-        requestRate = inp.getRequestRate();
 
-        workLoadMean = inp.getWorkLoadMean();
-        paretoAlpha = inp.getParetoAlpha();
-        randomSeed = Long.parseLong(args[1]);
-        workLoadDistribution = inp.getWorkLoadDistribution();
-        switch(workLoadDistribution) {
-            case PARETO:
-                pareto_K = (paretoAlpha-1.0)/paretoAlpha * workLoadMean;
+        cacheSize = inp.getCacheSize();
+        cacheType = inp.getCacheType();
+        switch(cacheType) {
+            case "LRU":
+                cache = new LRUCache(cacheSize); // in MBs
                 break;
+            case "LP":
+                cache = new LPCache(cacheSize); // in MBs
+                break;
+            case "FIFO":
+                cache = new FIFOCache(cacheSize);
             default:
                 break;
         }
-        System.out.println("Workload Mean: " + workLoadMean);
-        if (workLoadDistribution == Distribution.PARETO){
-            System.out.println("Pareto Alpha: " + paretoAlpha);
-            System.out.println("Pareto K: " + pareto_K);
+        institutionBandwidth = inp.getInstitutionBandwidth() / oneByte;
+        totalRequests = inp.getTotalRequests();
+        totalTime = inp.getTotalTime();
+        requestRate = inp.getRequestRate();
+        logNormalMean = inp.getLogNormalMean();
+        logNormalStd = inp.getLogNormalStd();
+        numFiles = inp.getNumberOfFiles();
+        fifoBandWidth = inp.getFifoBandWidth() / oneByte;
+        paretoMean = inp.getParetoMean();
+
+        paretoAlpha = inp.getParetoAlpha();
+        randomSeed = Long.parseLong(args[1]);
+        pareto_K = (paretoAlpha-1.0)/paretoAlpha * paretoMean;
+        logNormalDist = new LogNormalDistribution(rng, logNormalMean, logNormalStd);
+        expDist = new ExponentialDistribution(rng, 1.0/requestRate);
+        FileSelection fileSelector = new FileSelection(numFiles, paretoAlpha, paretoMean, paretoAlpha, pareto_K, rng);
+        fileMap = fileSelector.generateFiles();
+        Integer[] fileIds = fileMap.keySet().toArray(new Integer[0]);
+        int[] intArray = Arrays.stream(fileIds).mapToInt(Integer::intValue).toArray();
+        FileMetadata[] fileMetas = fileMap.values().toArray(new FileMetadata[0]);
+        popularityProbabilities = new double[fileMetas.length];
+        for(int i=0; i<fileMetas.length; i++) {
+            popularityProbabilities[i] = fileMetas[i].getProbability();
         }
-        System.out.println("Random seed is " + randomSeed);
+        fileSelectDistribution = new EnumeratedIntegerDistribution(intArray, popularityProbabilities);
+
+        for(FileMetadata fm : fileMetas) {
+            totalFileSize += fm.getSize();
+        }
+
+
+        System.out.println("Pareto Mean(MB)=" + paretoMean);
+        System.out.println("Pareto Alpha=" + paretoAlpha);
+        System.out.println("Pareto K=" + pareto_K);
+        System.out.println("Total Requests=" + totalRequests);
+        System.out.println("Number of files=" + numFiles);
+        System.out.println("Request Rate=" + requestRate);
+        System.out.println("Log Normal Mean(secs)=" + logNormalMean);
+        System.out.println("Log Normal Standard Deviation(secs)=" + logNormalStd);
+        System.out.println("Cache Type=" + cacheType);
+        System.out.println("Institution Bandwidth(Mbps)=" + institutionBandwidth * oneByte);
+        System.out.println("FIFO Bandwidth(Mbps)=" + fifoBandWidth * oneByte);
+        System.out.println("Cache Size(MB)=" + cacheSize);
+        System.out.println("Total File Size(MB)=" + totalFileSize);
 
         long timeNow = System.currentTimeMillis();
         System.out.println("Simulation started at: " + timeNow);
-        double workLoad = getWorkLoad();
-        mainLoop(workLoad);
+        mainLoop();
+        timeNow = System.currentTimeMillis();
         System.out.println("Simulation ended at: " + timeNow);
         printStatistics();
 
     }
 
-    public static double getWorkLoad() {
-        double wl = 0.0;
-        switch(workLoadDistribution) {
-            case EXPONENTIAL:
-                ExponentialDistribution e = new ExponentialDistribution(rng, workLoadMean);
-                wl = e.sample();
-                break;
-            case PARETO:
-                ParetoDistribution p = new ParetoDistribution(rng, pareto_K, paretoAlpha);
-                wl = p.sample();
-        }
-        return wl;
-    }
-
-    public static void mainLoop(double workLoad) throws Exception {
-        Packet packet = new Packet(numRequests + 1, 0.0, 0.0, workLoad);
-        Event event = new Event(0, currentTime, packet, packet.getPacketId(), EventType.REQUEST_ARRIVAL_EVENT);
+    public static void mainLoop() throws Exception {
+        int randomFileId = fileSelectDistribution.sample();
+        Packet packet = new Packet(randomFileId,
+                fileMap.get(randomFileId).getSize(),
+                fileMap.get(randomFileId).getPopularity(),
+                fileMap.get(randomFileId).getProbability(),
+                currentTime,
+                currentTime);
+        Event event = new Event(0, currentTime,
+                packet,
+                packet.getPacketId(),
+                EventType.NEW_REQUEST_EVENT);
         eventPQ.enqueue(event);
 
-        while(numFinished < totalRequests || currentTime < totalTime) {
+        //numFinished < totalRequests ||
+        while(currentTime < totalTime) {
             if (!eventPQ.isEmpty()) {
                 Event e = eventPQ.dequeue();
                 currentTime = e.key;
                 switch(e.func) {
-                    case REQUEST_ARRIVAL_EVENT:
-                        requestArrivalTime(e);
+                    case NEW_REQUEST_EVENT:
+                        newRequestEvent(e);
                         break;
-                    case END_OF_TRANSMISSION_EVENT:
-                        endOfTransmissionEvent(e);
+                    case FILE_RECEIVED_EVENT:
+                        fileReceivedEvent(e);
                         break;
-                    case END_OF_SERVICE_EVENT:
-                        endOfServiceEvent(e);
+                    case ARRIVE_AT_QUEUE_EVENT:
+                        arriveAtQueueEvent(e);
+                        break;
+                    case DEPART_QUEUE_EVENT:
+                        departQueueEvent(e);
                         break;
                 }
             }
         }
     }
 
-    public static void requestArrivalTime(Event ev) {
-        Packet p = ev.getPacket();
-        p.setRequestTime(currentTime);
-
-        numRequests++;
+    public static void newRequestEvent(Event ev) {
         numInService++;
+        numRequests++;
         inService.addToCumulatedValue(numInService);
         inService.addToNumPoints(1.0);
 
-        // send the request immediately to a server
+        //check in the cache
+        int fileId = ev.getPacket().getPacketId();
+        if(cache.get(fileId).getFileId() > 0) {
+            cacheHit.addToNumPoints(1.0);
+            cacheHit.addToCumulatedValue(1.0);
 
-        // create an end_of_service event. We assume an infinite number of servers.
-        // The service time is proportional to the workload or file size.
-        // For the first stage, we effectively have an M/G/infinity queue.
+            double d = currentTime + ( fileMap.get(fileId).getSize() / institutionBandwidth);
+            Event fileReceivedEvent = new Event(0, d, ev.getPacket(), fileId, EventType.FILE_RECEIVED_EVENT);
 
-        // reuse the event object
-        ev.setKey(currentTime + p.getWorkLoad()/serverRate);
-        ev.setFunc(EventType.END_OF_SERVICE_EVENT);
-        eventPQ.enqueue(ev);
+            cache.put(fileId, new FileMetadata(fileMap.get(fileId).getSize(),
+                    fileMap.get(fileId).getPopularity(),
+                    fileMap.get(fileId).getProbability()));
+            eventPQ.enqueue(fileReceivedEvent);
+        }
+        else {
+            cacheMiss.addToNumPoints(1.0);
+            cacheMiss.addToCumulatedValue(1.0);
 
-        /* schedule a new request_arrival_event */
-        p.setPacketId(numRequests + 1);
-        p.setWorkLoad(getWorkLoad());
-        double d = currentTime + getRequestInterArrivalTime();
-        Event newEvent = new Event(0, d, p, p.getPacketId(), EventType.REQUEST_ARRIVAL_EVENT);
-        eventPQ.enqueue(newEvent);
+            double d = currentTime + logNormalDist.sample();
+            Event cacheMissEvent = new Event(0, d, ev.getPacket(), fileId, EventType.ARRIVE_AT_QUEUE_EVENT);
+            eventPQ.enqueue(cacheMissEvent);
+        }
 
+        if(numRequests < totalRequests) {
+            double nextRequestTime = currentTime + expDist.sample();
+            int randomFileId = fileSelectDistribution.sample();
+            Packet newPacket = new Packet(randomFileId,
+                    fileMap.get(randomFileId).getSize(),
+                    fileMap.get(randomFileId).getPopularity(),
+                    fileMap.get(randomFileId).getProbability(),
+                    nextRequestTime, nextRequestTime);
+            Event newRequestEvent = new Event(0, nextRequestTime, newPacket, randomFileId, EventType.NEW_REQUEST_EVENT);
+            eventPQ.enqueue(newRequestEvent);
+        }
     }
 
-    /*
-     *    end_of_service event: end of service by a server. Send the packet to
-     *    the FIFO packet queue
-     */
-    public static void endOfServiceEvent(Event ev) {
+    public static void fileReceivedEvent(Event ev) {
+        responseTime.addToNumPoints(1.0);
+        responseTime.addToCumulatedValue(currentTime - ev.getPacket().getRequestCreationTime());
+        numFinished++;
+    }
+
+    public static void arriveAtQueueEvent(Event ev) {
         numInService--;
         queued.addToCumulatedValue(packetQueue.getTotalItems());
         queued.addToNumPoints(1.0);
 
-        Packet p = ev.getPacket();
-        p.setArrivalTimeToQueue(currentTime);
-        packetQueue.enqueue(p);
+        Packet packet = ev.getPacket();
+        int fileId = packet.getPacketId();
 
-        // if pack is the only packet in the queue, schedule
-        // an end_of_transmission_event
+        packet.setArriveAtQueueTime(currentTime);
+        packetQueue.enqueue(packet);
+
         if(packetQueue.getTotalItems() == 1) {
-            ev.setKey(currentTime + p.getWorkLoad());
-            ev.setFunc(EventType.END_OF_TRANSMISSION_EVENT);
-            eventPQ.enqueue(ev);
+            double d = currentTime + (packet.metadata().getSize() / fifoBandWidth);
+            Event departQueueEvent = new Event(0, d, packet, fileId, EventType.DEPART_QUEUE_EVENT);
+            eventPQ.enqueue(departQueueEvent);
         }
     }
 
-    /*
-     *    end_of_transmission event: schedule the next end_of_transmission_event
-     *    if the queue is not empty
-     */
-    public static void endOfTransmissionEvent(Event ev) throws Exception {
-        Packet p = ev.getPacket();
-        packetQueue.dequeue(p);
-
-        // collect data
-        numFinished++;
-        double d = currentTime - p.getRequestTime();
-        responseTime.addToCumulatedValue(d);
-        responseTime.addToNumPoints(1.0);
-
-        d = currentTime - p.getArrivalTimeToQueue();
-        queueingDelay.addToCumulatedValue(d);
+    public static void departQueueEvent(Event ev) throws Exception {
+        int fileId = ev.getPacket().getPacketId();
+        cache.put(fileId, new FileMetadata(ev.getPacket().metadata().getSize(),
+                    ev.getPacket().metadata().getPopularity(),
+                    ev.getPacket().metadata().getProbability()));
+        double d = currentTime + (ev.getPacket().metadata().getSize() / institutionBandwidth);
+        queueingDelay.addToCumulatedValue(d - ev.getPacket().getArriveAtQueueTime());
         queueingDelay.addToNumPoints(1.0);
+        Event fileReceivedEvent = new Event(0, d, ev.getPacket(), fileId, EventType.FILE_RECEIVED_EVENT);
+        eventPQ.enqueue(fileReceivedEvent);
+        packetQueue.dequeue(ev.getPacket());
 
-        if(packetQueue.getTotalItems() != 0) {
-                /* If the queue is not empty, schedule an end_of_transmission_event
-       for the next packet. Re-use ev. */
-            p = packetQueue.getHead();
-            ev.setPacket(p);
-            ev.setPacketId(p.getPacketId());
-            ev.setFunc(EventType.END_OF_TRANSMISSION_EVENT);
-            ev.setKey(currentTime + p.getWorkLoad());
-            eventPQ.enqueue(ev);
+        if(packetQueue.getTotalItems() > 0) {
+            Packet headPacket = packetQueue.getHead();
+            int newFileId = headPacket.getPacketId();
+            double nextDepartTime = currentTime + (headPacket.metadata().getSize() / fifoBandWidth);
+            Event departQueueEvent = new Event(0, nextDepartTime, headPacket, newFileId, EventType.DEPART_QUEUE_EVENT);
+            eventPQ.enqueue(departQueueEvent);
         }
-    }
-
-    public static double getRequestInterArrivalTime() {
-        ExponentialDistribution ed = new ExponentialDistribution(rng, 1.0/requestRate);
-        return ed.sample();
     }
 
     public static void printStatistics() {
@@ -243,6 +292,13 @@ public class Driver {
         if (responseTime.getNumPoints() != 0.0) {
             mean = responseTime.getCumulatedValue() / responseTime.getNumPoints();
             System.out.println("Average response time: " + mean);
+        }
+
+        if (cacheMiss.getNumPoints() != 0.0 && cacheHit.getNumPoints() != 0.0) {
+            mean = cacheHit.getCumulatedValue() / (cacheHit.getNumPoints() + cacheMiss.getNumPoints());
+            System.out.println("Cache hit ratio: " + mean);
+            mean = cacheMiss.getCumulatedValue() / (cacheHit.getNumPoints() + cacheMiss.getNumPoints());
+            System.out.println("Cache miss ratio: " + mean);
         }
 
     }
