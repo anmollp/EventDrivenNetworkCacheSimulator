@@ -1,5 +1,6 @@
 import org.apache.commons.math3.distribution.EnumeratedIntegerDistribution;
 import org.apache.commons.math3.distribution.LogNormalDistribution;
+import org.apache.commons.math3.distribution.PoissonDistribution;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.distribution.ExponentialDistribution;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
@@ -44,14 +45,15 @@ public class Driver {
     static double cacheSize;
     static int oneByte = 8;
     static double[] popularityProbabilities;
+    static double totalFileSize;
 
     // the following are used to compute the mean
     static CumulativeMeasurement inService = new CumulativeMeasurement(0.0, 0.0);  // cumulative number in service
     static CumulativeMeasurement queued = new CumulativeMeasurement(0.0, 0.0); // cumulative number in the queue
     static CumulativeMeasurement queueingDelay = new CumulativeMeasurement(0.0, 0.0); // cumulative queueing in the queue
     static CumulativeMeasurement responseTime = new CumulativeMeasurement(0.0, 0.0); // cumulative response time
-    static CumulativeMeasurement cacheHit = new CumulativeMeasurement(0.0, 0.0); // cumulative response time
-    static CumulativeMeasurement cacheMiss = new CumulativeMeasurement(0.0, 0.0); // cumulative response time
+    static CumulativeMeasurement cacheHit = new CumulativeMeasurement(0.0, 0.0); // number of cache hits
+    static CumulativeMeasurement cacheMiss = new CumulativeMeasurement(0.0, 0.0); // number of cache misses
 
     static Random rand = new Random(randomSeed);
     static RandomGenerator rng = RandomGeneratorFactory.createRandomGenerator(rand);
@@ -103,7 +105,7 @@ public class Driver {
         pareto_K = (paretoAlpha-1.0)/paretoAlpha * paretoMean;
         logNormalDist = new LogNormalDistribution(rng, logNormalMean, logNormalStd);
         expDist = new ExponentialDistribution(rng, 1.0/requestRate);
-        FileSelection fileSelector = new FileSelection(numFiles, paretoAlpha, paretoMean, 1.0, 1.0, rng);
+        FileSelection fileSelector = new FileSelection(numFiles, paretoAlpha, paretoMean, paretoAlpha, pareto_K, rng);
         fileMap = fileSelector.generateFiles();
         Integer[] fileIds = fileMap.keySet().toArray(new Integer[0]);
         int[] intArray = Arrays.stream(fileIds).mapToInt(Integer::intValue).toArray();
@@ -113,6 +115,10 @@ public class Driver {
             popularityProbabilities[i] = fileMetas[i].getProbability();
         }
         fileSelectDistribution = new EnumeratedIntegerDistribution(intArray, popularityProbabilities);
+
+        for(FileMetadata fm : fileMetas) {
+            totalFileSize += fm.getSize();
+        }
 
 
         System.out.println("Pareto Mean(MB)=" + paretoMean);
@@ -127,6 +133,7 @@ public class Driver {
         System.out.println("Institution Bandwidth(Mbps)=" + institutionBandwidth * oneByte);
         System.out.println("FIFO Bandwidth(Mbps)=" + fifoBandWidth * oneByte);
         System.out.println("Cache Size(MB)=" + cacheSize);
+        System.out.println("Total File Size(MB)=" + totalFileSize);
 
         long timeNow = System.currentTimeMillis();
         System.out.println("Simulation started at: " + timeNow);
@@ -242,13 +249,11 @@ public class Driver {
 
     public static void departQueueEvent(Event ev) throws Exception {
         int fileId = ev.getPacket().getPacketId();
-        if(ev.getPacket().metadata().getSize() < paretoMean * 3) {
-            cache.put(fileId, new FileMetadata(ev.getPacket().metadata().getSize(),
+        cache.put(fileId, new FileMetadata(ev.getPacket().metadata().getSize(),
                     ev.getPacket().metadata().getPopularity(),
                     ev.getPacket().metadata().getProbability()));
-        }
-        double d = currentTime + ev.getPacket().metadata().getSize() / institutionBandwidth;
-        queueingDelay.addToCumulatedValue(currentTime - ev.getPacket().getArriveAtQueueTime());
+        double d = currentTime + (ev.getPacket().metadata().getSize() / institutionBandwidth);
+        queueingDelay.addToCumulatedValue(d - ev.getPacket().getArriveAtQueueTime());
         queueingDelay.addToNumPoints(1.0);
         Event fileReceivedEvent = new Event(0, d, ev.getPacket(), fileId, EventType.FILE_RECEIVED_EVENT);
         eventPQ.enqueue(fileReceivedEvent);
@@ -257,7 +262,7 @@ public class Driver {
         if(packetQueue.getTotalItems() > 0) {
             Packet headPacket = packetQueue.getHead();
             int newFileId = headPacket.getPacketId();
-            double nextDepartTime = currentTime + headPacket.metadata().getSize() / fifoBandWidth;
+            double nextDepartTime = currentTime + (headPacket.metadata().getSize() / fifoBandWidth);
             Event departQueueEvent = new Event(0, nextDepartTime, headPacket, newFileId, EventType.DEPART_QUEUE_EVENT);
             eventPQ.enqueue(departQueueEvent);
         }

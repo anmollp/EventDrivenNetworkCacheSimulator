@@ -5,7 +5,7 @@
 2. commons-math3-3.6.1-tools.jar
 3. commons-math3-3.6.1-tests.jar
 ## Usage:
-Extract the zip file **MidpointCheck_Anmol_Nandigam.zip**
+Extract the zip file **Project_Anmol_Nandigam.zip**
 
 ## Files
 1. CumulativeMeasurement.java
@@ -16,6 +16,13 @@ Extract the zip file **MidpointCheck_Anmol_Nandigam.zip**
 6. input.txt
 7. Packet.java
 8. InputReader.java
+9. FileSelection.java
+10. FileMetadata.java
+11. Node.java
+12. Cache.java
+13. LRU Cache.java
+14. LPCache.java
+15. FIFOCache.java
 
 ## How to compile
 1. Place the jars in the same folder as java files
@@ -33,6 +40,4 @@ Extract the zip file **MidpointCheck_Anmol_Nandigam.zip**
   
 `Java HotSpot(TM) 64-Bit Server VM (build 25.271-b09, mixed mode)`
 
-  ## Output
-      ![alt](/img/midpoint-check-output.png)
   
