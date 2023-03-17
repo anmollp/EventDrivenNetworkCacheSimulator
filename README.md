@@ -1,4 +1,10 @@
 # EventDrivenNetworkCacheSimulator
+By simulating a network cache using an
+event driven model where in the requested files follow
+a Pareto distribution, with a poisson file requests dis-
+tribution along with caching techniques such as LRU,
+Least Popular and FIFO, we try to understand the use
+of probability in an ever growing world of internet
 
 ## Required jars:
 1. commons-math3-3.6.1.jar
